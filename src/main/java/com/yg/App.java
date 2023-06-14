@@ -10,10 +10,7 @@ import org.springframework.context.SmartLifecycle;
 
 import java.io.File;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.List;
+import java.util.*;
 
 @SpringBootApplication
 public class App implements SmartLifecycle  {
@@ -27,8 +24,10 @@ public class App implements SmartLifecycle  {
         // 初始化公式执行环境 必须前置
         ApplicationUtil.getBean(AviatorSystemInit.class).initAll();
 
-        // 测试编写公式
-        AviatorCacheManager.getInstance().getAviatorInstance().execute("IFF(1==1,1,2)");
+        // 测试公式
+        Map<String, Object> params = new HashMap<>();
+        params.put("$ZTDM$", 1); // 帐套
+        AviatorCacheManager.getInstance().getAviatorInstance().execute("IF(1==1,1,2)", params);
     }
 
     @Override
