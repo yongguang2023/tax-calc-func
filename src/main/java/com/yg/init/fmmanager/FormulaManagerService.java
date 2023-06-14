@@ -15,6 +15,7 @@ import com.yg.init.dsmanager.JdbcTemplatePool;
 import com.yg.service.DatasourceService;
 import com.yg.service.FormulaService;
 import com.yg.util.ApplicationUtil;
+import com.yg.util.PackageUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -37,8 +38,6 @@ public class FormulaManagerService  {
   @Resource
   private FormulaService formulaService;
 
-  private String functions;
-
   /**
    * 代理类
    */
@@ -47,7 +46,7 @@ public class FormulaManagerService  {
   /**
    * 默认包路径
    */
-  private static final String DEFAULT_PACKAGE = "com.yg.functions.";
+  private static final String DEFAULT_PACKAGE = "com.yg.functions";
 
   public void initAviatorFunction() {
     log.info(
@@ -82,10 +81,13 @@ public class FormulaManagerService  {
     instance.addFunctionLoader(new SpringContextFunctionLoader(ApplicationUtil.getApplicationContext()));
     AviatorCacheManager.getInstance().addAviatorInstance(instance);
     // 通过配置自动加入自定义function,这里不需要为每个实例初始化，走兜底方案
-    if (StringUtils.isNotBlank(functions)) {
-      Arrays.stream(functions.split(",")).forEach(name -> {
-        AviatorFunction function = this.findFunction(name);
+    List<Class<?>> classes = PackageUtil.getClasses(DEFAULT_PACKAGE);
+    if (CollectionUtils.isNotEmpty(classes)) {
+      classes.forEach(clazz -> {
+        AviatorFunction function = this.findFunction(clazz.getName());
         if (function != null) {
+          // 通过注解注入数据源
+          this.configDataSourceByAnnotation(function);
           instance.addFunction(function);
         }
       });
@@ -130,9 +132,8 @@ public class FormulaManagerService  {
       Class<? extends AviatorFunction> clz = (Class<? extends AviatorFunction>) Class
           .forName(className);
       try {
-        return ApplicationUtil.getBean(clz);
-      } catch (Exception e) {
         return this.createProxy(clz);
+      } catch (Exception e) {
       }
     } catch (Exception e) {
       log.error("load function by class name error,name : {},msg : {}", className, e.getMessage());
